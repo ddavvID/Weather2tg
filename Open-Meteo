@@ -1,0 +1,80 @@
+import requests
+from telegram import Update
+from telegram.ext import Updater, CommandHandler, CallbackContext
+
+# 獲取天氣數據的函數
+def get_weather(city):
+    # 使用 Open-Meteo API 的地理位置查詢
+    geocoding_url = f"https://geocoding-api.open-meteo.com/v1/search?name={city}"
+    response = requests.get(geocoding_url)
+    location_data = response.json()
+
+    if not location_data['results']:
+        return None  # 如果找不到城市，返回 None
+
+    # 獲取經緯度
+    latitude = location_data['results'][0]['latitude']
+    longitude = location_data['results'][0]['longitude']
+
+    # 使用經緯度獲取天氣數據
+    weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&current_weather=true"
+    weather_response = requests.get(weather_url)
+    weather_data = weather_response.json()
+
+    return weather_data
+
+# 定義 /start 指令的回應函數
+def start(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text('Hello! Welcome to the Weather Bot. Use /weather <city> to get the current weather.')
+
+# 定義 /weather 指令的回應函數
+def weather(update: Update, context: CallbackContext) -> None:
+    if not context.args:
+        update.message.reply_text('Please provide a city name. Usage: /weather <city>')
+        return
+
+    city = ' '.join(context.args)  # 從命令參數中獲取城市名稱
+    weather_data = get_weather(city)
+
+    if weather_data and 'current_weather' in weather_data:
+        current_weather = weather_data['current_weather']
+        temperature = current_weather['temperature']
+        windspeed = current_weather['windspeed']
+        update.message.reply_text(f'The current temperature in {city} is {temperature}°C with a wind speed of {windspeed} km/h.')
+    else:
+        update.message.reply_text('City not found. Please try another city.')
+
+# 主函數
+def main():
+    # 用你的 Token 初始化 Updater
+    updater = Updater("YOUR_TOKEN_HERE")
+
+    # 獲取調度器以註冊處理器
+    dispatcher = updater.dispatcher
+
+    # 註冊指令處理器
+    dispatcher.add_handler(CommandHandler("start", start))
+    dispatcher.add_handler(CommandHandler("weather", weather))
+
+    # 開始輪詢更新
+    updater.start_polling()
+
+    # 直到你按 Ctrl-C 停止
+    updater.idle()
+
+if __name__ == '__main__':
+    main()
+
+
+###
+說明
+獲取天氣數據：
+get_weather 函數首先使用 Open-Meteo 的地理位置查詢 API 獲取城市的經緯度，然後使用這些坐標來獲取當前天氣。
+Telegram Bot 功能：
+/start 指令會向用戶發送歡迎消息。
+/weather <city> 指令會查詢並返回指定城市的當前天氣。
+運行 Bot：
+在程式碼中將 "YOUR_TOKEN_HERE" 替換為從 BotFather 獲得的 Token。
+運行此腳本後，你可以在 Telegram 中與你的 Bot 互動，使用 /weather <city> 查詢天氣。
+這樣，你就可以輕鬆地使用 Open-Meteo API 和 Telegram Bot 提供即時天氣資訊！
+###
