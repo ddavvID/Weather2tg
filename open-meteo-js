@@ -1,0 +1,88 @@
+const TELEGRAM_BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"; // 替換為你的 Bot Token
+const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
+
+// 監聽 fetch 事件
+addEventListener("fetch", (event) => {
+  event.respondWith(handleRequest(event.request));
+});
+
+// 主函數：處理來自 Telegram 的請求
+async function handleRequest(request) {
+  if (request.method === "POST") {
+    try {
+      // 獲取來自 Telegram 的更新消息
+      const updates = await request.json();
+      console.log("Updates received:", updates); // 調試用，記錄收到的更新
+
+      const chatId = updates.message?.chat?.id; // 聊天 ID
+      const text = updates.message?.text; // 用戶發送的消息
+
+      if (chatId && text) {
+        // 如果是新用戶或首次對話，發送歡迎消息
+        if (text === "/start") {
+          await sendMessage(chatId, "Hello! Welcome to the Weather Bot. Please enter a city name to get the current weather.");
+        } else {
+          // 檢查用戶輸入是否為城市名稱
+          const weatherData = await getWeather(text); // 獲取天氣數據
+
+          if (weatherData) {
+            const temperature = weatherData.current_weather.temperature; // 當前溫度
+            const windspeed = weatherData.current_weather.windspeed; // 當前風速
+            await sendMessage(chatId, `The current temperature in ${text} is ${temperature}°C with a wind speed of ${windspeed} km/h.`);
+          } else {
+            await sendMessage(chatId, 'City not found. Please try another city.');
+          }
+        }
+      }
+
+      return new Response("OK", { status: 200 }); // 返回 200 OK 給 Telegram
+    } catch (error) {
+      console.error("Error handling request:", error); // 記錄錯誤
+      return new Response("Internal Server Error", { status: 500 }); // 返回 500 錯誤
+    }
+  }
+
+  return new Response("This is a Telegram bot endpoint.", { status: 200 }); // 對於非 POST 請求返回簡單響應
+}
+
+// 獲取天氣數據的函數
+async function getWeather(city) {
+  const geocodingUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${city}`;
+  
+  try {
+    const response = await fetch(geocodingUrl);
+    const locationData = await response.json();
+
+    if (!locationData.results || locationData.results.length === 0) return null; // 如果找不到城市返回 null
+
+    const latitude = locationData.results[0].latitude; // 獲取經度
+    const longitude = locationData.results[0].longitude; // 獲取緯度
+
+    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`;
+    const weatherResponse = await fetch(weatherUrl);
+    return await weatherResponse.json(); // 返回天氣數據
+  } catch (error) {
+    console.error("Error fetching weather data:", error); // 記錄獲取天氣數據時的錯誤
+    return null; // 返回 null 表示失敗
+  }
+}
+
+// 發送消息給 Telegram 的函數
+async function sendMessage(chatId, text) {
+  const url = `${TELEGRAM_API_URL}/sendMessage`;
+  const payload = { chat_id: chatId, text: text };
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      console.error("Failed to send message:", await response.text());
+    }
+  } catch (error) {
+    console.error("Error sending message:", error); // 記錄發送消息時的錯誤
+  }
+}
