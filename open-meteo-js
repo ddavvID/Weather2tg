@@ -86,3 +86,25 @@ async function sendMessage(chatId, text) {
     console.error("Error sending message:", error); // 記錄發送消息時的錯誤
   }
 }
+
+
+
+功能說明
+/start 指令：
+當用戶發送 /start 時，Bot 回應歡迎消息並提示用戶直接輸入城市名稱以獲取當前天氣。
+直接輸入城市名稱：
+用戶可以直接輸入城市名稱（如「tokyo」），Bot 將自動查詢該城市的當前天氣。
+異常處理：
+在整個代碼中添加了異常處理，以捕獲並記錄可能出現的錯誤。
+使用步驟
+替換 Bot Token：
+將 "YOUR_TELEGRAM_BOT_TOKEN" 替換為你的實際 Bot Token。
+部署到 Cloudflare Workers：
+登錄到 Cloudflare Dashboard，創建一個新的 Worker，將此代碼粘貼到編輯器中。
+點擊 Save and Deploy 按鈕。
+設置 Webhook：
+使用以下命令設置 Webhook：
+bash
+curl -X POST "https://api.telegram.org/bot<YOUR_TELEGRAM_BOT_TOKEN>/setWebhook?url=https://your-worker-name.<your-subdomain>.workers.dev"
+測試 Bot：
+打開 Telegram，找到你的 Bot，發送 /start 指令來查看歡迎消息，然後直接輸入城市名稱（例如「tokyo」）來測試其功能。
